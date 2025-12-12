@@ -21,9 +21,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r}
-install.packages(c("mclust", "ggplot2"))
-```
+
 
 ```{r}
 library(mclust)
