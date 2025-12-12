@@ -1,0 +1,312 @@
+---
+title: "TP EEA 2025"
+author: "Ezequiel Pereyra y Agustín Barquinero"
+date: "11/12/2025"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+    df_print: paged
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.show = "markup", # Ya corregido
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+```{r}
+install.packages(c("mclust", "ggplot2"))
+```
+
+```{r}
+library(mclust)
+library(ggplot2)
+
+# 1. Leer datos
+wf_concat3 <- read.csv("wf_concat3.csv")
+wf_concat3 <- as.matrix(wf_concat3)
+
+```
+
+```{r}
+dim(wf_concat3)
+```
+
+```{r, fig.show='markup'}
+# Seleccionar la fila que querés visualizar
+i <- 889
+wave <- wf_concat3[i, ]
+n <- length(wave)
+
+# Cantidad de samples por canal
+samples_per_channel <- 45
+
+# Calcular posiciones de separación
+separadores <- seq(samples_per_channel, n, by = samples_per_channel)
+
+# Graficar
+plot(wave, type = "l", col = "blue",
+     main = paste("Waveform concatenada - spike", i),
+     xlab = "Muestras concatenadas",
+     ylab = "Amplitud")
+
+# Agregar líneas verticales en las fronteras de cada canal
+abline(v = separadores, col = "red", lty = 2)
+
+```
+
+```{r}
+library(ks)
+library(ggplot2)
+
+pca <- prcomp(wf_concat3, center = TRUE)
+X <- pca$x[, 1:2]   # TOMAR SOLO 2 COMPONENTES
+
+x <- X              # Renombrar para claridad
+print(dim(x))       # Debe ser Nx2
+
+H <- Hpi(x)         # Bandwidth KDE
+k <- kde(x, H = H)  # KDE 2D
+
+df <- expand.grid(
+  x = k$eval.points[[1]],
+  y = k$eval.points[[2]]
+)
+
+df$z <- as.vector(k$estimate)
+
+ggplot(df, aes(x, y, fill = z)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(
+    title = "Densidad KDE en espacio PCA",
+    x = "PC1",
+    y = "PC2",
+    fill = "Densidad"
+)
+
+
+```
+
+
+
+
+```{r}
+# 2. PCA 
+pca <- prcomp(wf_concat3, center = TRUE, scale. = FALSE)
+X <- pca$x[, 1:4]   # Usar 4 componentes como en Python
+
+# 3. Ajustar GMM con EM
+# Aquí defines el número de clusters:
+k <- 5
+
+gmm <- Mclust(X, G = k, modelNames = "VVV")  
+# "VVV" = covarianza full, equivalente a covariance_type="full"
+
+labels <- gmm$classification
+
+# 4. Graficar PC1 vs PC2 coloreado por cluster
+df_plot <- data.frame(PC1 = X[,1], PC2 = X[,2], cluster = as.factor(labels))
+
+ggplot(df_plot, aes(x = PC1, y = PC2, color = cluster)) +
+    geom_point(size = 1, alpha = 0.3) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_minimal() +
+    ggtitle("Clusters detectados por GMM (EM)") +
+    theme(legend.position = "right")
+```
+
+```{r}
+library(ggplot2)
+k <- 5
+# K-means directamente sobre los datos originales
+labels_kmeans <- kmeans(wf_concat3, centers = k, nstart = 20)$cluster
+
+# PCA para graficar
+pca2 <- prcomp(wf_concat3, center = TRUE)
+X2 <- pca2$x[, 1:2]
+
+df_kmeans <- data.frame(PC1 = X2[,1], PC2 = X2[,2],
+                        cluster = as.factor(labels_kmeans))
+
+ggplot(df_kmeans, aes(x = PC1, y = PC2, color = cluster)) +
+    geom_point(size = 1, alpha = 0.3) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_minimal() +
+    ggtitle("Clusters K-means (K=4) en espacio PCA")
+
+```
+
+
+
+```{r}
+library(mclust)
+library(ggplot2)
+
+# 1. Leer datos
+wf_concat2 <- read.csv("wf_concat2.csv")
+wf_concat2 <- as.matrix(wf_concat2)
+
+```
+
+```{r}
+dim(wf_concat2)
+```
+
+```{r, fig.show='markup'}
+# Seleccionar la fila que querés visualizar
+i <- 1
+wave <- wf_concat2[i, ]
+n <- length(wave)
+
+# Cantidad de samples por canal
+samples_per_channel <- 45
+
+# Calcular posiciones de separación
+separadores <- seq(samples_per_channel, n, by = samples_per_channel)
+
+# Graficar
+plot(wave, type = "l", col = "blue",
+     main = paste("Waveform concatenada - fila", i),
+     xlab = "Muestras concatenadas",
+     ylab = "Amplitud")
+
+# Agregar líneas verticales en las fronteras de cada canal
+abline(v = separadores, col = "red", lty = 2)
+
+```
+
+
+```{r}
+library(ks)
+library(ggplot2)
+
+pca <- prcomp(wf_concat2, center = TRUE)
+X <- pca$x[, 1:2]   # TOMAR SOLO 2 COMPONENTES
+
+x <- X              # Renombrar para claridad
+print(dim(x))       # Debe ser Nx2
+
+H <- Hpi(x)         # Bandwidth KDE
+k <- kde(x, H = H)  # KDE 2D
+
+df <- expand.grid(
+  x = k$eval.points[[1]],
+  y = k$eval.points[[2]]
+)
+
+df$z <- as.vector(k$estimate)
+
+ggplot(df, aes(x, y, fill = z)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(
+    title = "Densidad KDE en espacio PCA",
+    x = "PC1",
+    y = "PC2",
+    fill = "Densidad"
+)
+
+
+```
+
+
+
+```{r}
+# 2. PCA 
+pca <- prcomp(wf_concat2, center = TRUE, scale. = FALSE)
+X <- pca$x[, 1:4]   # Usar 4 componentes como en Python
+
+# 3. Ajustar GMM con EM
+# Aquí tú defines el número de clusters:
+k <- 3
+
+gmm <- Mclust(X, G = k, modelNames = "VVV")  
+# "VVV" = covarianza full, equivalente a covariance_type="full"
+
+labels <- gmm$classification
+
+# 4. Graficar PC1 vs PC2 coloreado por cluster
+df_plot <- data.frame(PC1 = X[,1], PC2 = X[,2], cluster = as.factor(labels))
+
+ggplot(df_plot, aes(x = PC1, y = PC2, color = cluster)) +
+    geom_point(size = 1, alpha = 0.3) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_minimal() +
+    ggtitle("Clusters detectados por GMM (EM)") +
+    theme(legend.position = "right")
+```
+
+```{r}
+library(ggplot2)
+
+# K-means directamente sobre los datos originales
+labels_kmeans <- kmeans(wf_concat2, centers = k, nstart = 20)$cluster
+
+# PCA para graficar
+pca2 <- prcomp(wf_concat2, center = TRUE)
+X2 <- pca2$x[, 1:2]
+
+df_kmeans <- data.frame(PC1 = X2[,1], PC2 = X2[,2],
+                        cluster = as.factor(labels_kmeans))
+
+ggplot(df_kmeans, aes(x = PC1, y = PC2, color = cluster)) +
+    geom_point(size = 1, alpha = 0.3) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_minimal() +
+    ggtitle("Clusters K-means (K=4) en espacio PCA")
+
+```
+
+
+Criterio BIC
+
+```{r}
+pca <- prcomp(wf_concat3, center = TRUE)
+X <- pca$x[, 1:6]
+X_plot <- pca$x[, 1:2]
+```
+
+```{r}
+library(mclust)
+
+em_fit <- Mclust(X, G = 1:6)    # Prueba G = 1:9, varios modelos
+summary(em_fit)
+```
+
+
+```{r}
+plot(em_fit, what = "BIC")
+```
+
+```{r}
+labels_em <- em_fit$classification
+k_em <- em_fit$G
+k_em
+```
+
+```{r}
+df_em <- data.frame(
+  PC1 = X_plot[,1],
+  PC2 = X_plot[,2],
+  cluster = as.factor(labels_em)
+)
+
+ggplot(df_em, aes(PC1, PC2, color = cluster)) +
+    geom_point(size = 1, alpha = 0.4) +
+    theme_minimal() +
+    scale_color_brewer(palette = "Set1") +
+    ggtitle(paste("EM/GMM con K óptimo por BIC =", k_em))
+
+```
+
+
